@@ -174,7 +174,9 @@ def detect_anomalies(days, baseline_statistics):
                     anomaly_counter += deviation * weight 
                     
             status = "!!!!!!!!!!!!!!!!!!!!!flagged!!!!!!!!!!!!!!!!!!!!!" if anomaly_counter >= threshold else "okay" 
-            results.append({ "day": day + 1, "anomaly_counter": anomaly_counter, "threshold": threshold, "status": status }) 
+            results.append({ "day": day + 1, "anomaly_counter": round(anomaly_counter, 2), "threshold": threshold, "status": status })
+            with open("log.json", "w") as txt_file:
+            	json.dump(results, txt_file, indent=4)
         except (json.JSONDecodeError, FileNotFoundError) as e: 
             print(f"Error reading log file {log_file}: {e}") 
             continue
