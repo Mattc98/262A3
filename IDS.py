@@ -150,7 +150,6 @@ def analyze_stats():
 
     return baseline_statistics
 
-
 def detect_anomalies(days, baseline_statistics): 
     """Detect anomalies based on generated events and baseline statistics.""" 
     threshold = 2 * sum(e["weight"] for e in events.values())
@@ -183,6 +182,61 @@ def detect_anomalies(days, baseline_statistics):
 
     return results
 
+def check_consistency(stats_file, event_file):
+    ticks = []  # List to store tick marks for successful checks
+    try:
+        # Read and parse the stats file
+        with open(stats_file, 'r') as f:
+            stats_data = f.read().splitlines()
+        num_events_stats = int(stats_data[0])
+        stats_entries = stats_data[1:]
+
+        # Read and parse the event file
+        with open(event_file, 'r') as f:
+            event_data = f.read().splitlines()
+        num_events_event = int(event_data[0])
+        event_entries = event_data[1:]
+
+        # Check if the number of events match
+        if num_events_stats != num_events_event:
+            return "Mismatch in number of events between stats and event files."
+
+        ticks.append("✔ Number of events match")  # Add tick for successful check
+
+        # Loop through and validate each event
+        for i in range(num_events_stats):
+            # Parse stats data
+            stats_parts = stats_entries[i].split(":")
+            event_name_stats = stats_parts[0].strip()
+            mean = float(stats_parts[1])
+            std_dev = float(stats_parts[2])
+
+            # Parse event data
+            event_parts = event_entries[i].split(":")
+            event_name_event = event_parts[0].strip()
+            constraint_type = event_parts[1]
+            min_val = float(event_parts[2])
+            max_val = float(event_parts[3])
+            weight = float(event_parts[4])
+
+            # Check if event names match
+            if event_name_stats != event_name_event:
+                return f"Event name mismatch at index {i}: {event_name_stats} != {event_name_event}"
+            ticks.append(f"✔ Event name match for '{event_name_stats}'")  # Add tick for successful check
+
+            # Check if values are within constraints
+            if not (min_val <= mean <= max_val):
+                return f"Mean value for {event_name_stats} is out of range: {mean} not in [{min_val}, {max_val}]"
+            ticks.append(f"✔ Mean value for '{event_name_stats}' within range")  # Add tick for successful check
+
+            # Additional checks (if needed) could be added here with corresponding ticks
+
+        # If all checks pass, return the ticks as confirmation
+        return "All data is consistent.\n" + "\n".join(ticks)
+
+    except Exception as e:
+        return f"Error during consistency check: {str(e)}"
+
 
 def main():
     if len(sys.argv) != 4:
@@ -192,6 +246,17 @@ def main():
     events_file = sys.argv[1]
     stats_file = sys.argv[2]
     days = int(sys.argv[3])
+
+    # Validate input files
+    if not os.path.isfile(events_file):
+        print(f"Error: The file '{events_file}' does not exist or is not a valid file.")
+        sys.exit(1)
+    if not os.path.isfile(stats_file):
+        print(f"Error: The file '{stats_file}' does not exist or is not a valid file.")
+        sys.exit(1)
+
+    result = check_consistency(stats_file, events_file)
+    print(result)
 
     read_events(events_file)
     read_statistics(stats_file)
@@ -210,6 +275,12 @@ def main():
         user_input = input("Would you like to load another statistics file (y/n)? ")
         if user_input.lower() == "y":
             new_file = input("Enter new statistics file name: ")
+            
+            # Validate the new file
+            if not os.path.isfile(new_file):
+                print(f"Error: The file '{new_file}' does not exist or is not a valid file.")
+                continue  # Ask for a valid file name again
+
             read_statistics(new_file)  # Correctly read the new statistics file
             days = int(input("Enter number of days to generate events: "))
             
