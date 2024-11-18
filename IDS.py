@@ -245,7 +245,13 @@ def main():
     
     events_file = sys.argv[1]
     stats_file = sys.argv[2]
-    days = int(sys.argv[3])
+
+    # Try to convert the third argument to an integer
+    try:
+        days = int(sys.argv[3])
+    except ValueError:
+        print(f"Error: '{sys.argv[3]}' is not a valid number of days. Please provide an integer value.")
+        sys.exit(1)
 
     # Validate input files
     if not os.path.isfile(events_file):
